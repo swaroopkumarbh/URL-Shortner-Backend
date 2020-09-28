@@ -219,6 +219,9 @@ app.post("/login", async (request, response) => {
     }
 });
 
+/*sample route*/
+app.get("/", (request, response) => { response.send("sample route") })
+
 
 var port = process.env.PORT || 3000;
 app.listen(port);
