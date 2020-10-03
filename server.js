@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
 require("dotenv").config();
 const mongodb = require("mongodb");
 const bodyparser = require("body-parser");
@@ -13,8 +14,13 @@ const shortid = require("shortid");
 app.use(cors());
 app.use(bodyparser.json());
 
+const eventTrigger = require("events");
+var eventEmitter = new eventTrigger();
+
+
+
 /*API for populating the url in the collection*/
-app.post("/shrink-url", async (request, response) => {
+app.post("/shrink-url", authenticateNavigation, async (request, response) => {
     let client;
     try {
         client = await mongoclient.connect(url);
@@ -46,7 +52,7 @@ app.post("/shrink-url", async (request, response) => {
 });
 
 /*API to increment the number of clicks*/
-app.put("/shrink-url", async (request, response) => {
+app.put("/shrink-url", authenticateNavigation, async (request, response) => {
     let client;
     try {
         client = await mongoclient.connect(url);
@@ -80,7 +86,7 @@ app.put("/shrink-url", async (request, response) => {
 });
 
 /*API for displaying the data based on user*/
-app.post("/get-original-url", async (request, response) => {
+app.post("/get-original-url", authenticateNavigation, async (request, response) => {
     let client;
     try {
         client = await mongoclient.connect(url);
@@ -101,7 +107,7 @@ app.post("/get-original-url", async (request, response) => {
 app.post("/users/register", async (request, response) => {
     let client;
     try {
-        client = await mongoclient.connect(url);
+        client = await mongoclient.connect(url, { useUnifiedTopology: true });
 
         var db = client.db("URL_SHORTNER");
         var cursor = await db
@@ -121,6 +127,33 @@ app.post("/users/register", async (request, response) => {
             request.body.activated = false;
             var insertCursor = await db.collection("USER").insertOne(request.body);
             var token = jwt.sign({ email: request.body.email }, process.env.JWT_SECRET);
+
+            var emailReg = request.body.email;
+            eventEmitter.on("email-trigger", (req, res) => {
+                var transporter = nodemailer.createTransport({
+                    service: "gmail",
+                    auth: {
+                        user: "bhswaroopkumar@gmail.com",
+                        pass: process.env.MAILPASSWORD,
+                    },
+                });
+                var mailoptions = {
+                    from: `bhswaroopkumar@gmail.com`,
+                    to: `bhswaroopkumar@gmail.com`,
+                    subject: `User Activation Mail from URL Shortner`,
+                    html: `<div>Please click the below link to activate your account <br>                     <a href="https://swaroop-url-shortner.netlify.app/auth.html">Click Me</a></div>`,
+                };
+                transporter.sendMail(mailoptions, (err, info) => {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        console.log("email sent" + info.response);
+                    }
+                });
+            });
+
+            eventEmitter.emit("email-trigger");
+
             client.close();
             response.json({
                 message: "User registered",
@@ -137,6 +170,7 @@ app.post("/users/register", async (request, response) => {
 app.put("/users/auth/:email", authenticate, async (request, response) => {
     let client;
     try {
+        console.log('inside auth api')
         client = await mongoclient.connect(url);
         var db = client.db("URL_SHORTNER");
         var cursor = await db
@@ -200,9 +234,11 @@ app.post("/login", async (request, response) => {
         if (user && user.activated == true) {
             var isMatch = await bcrypt.compare(request.body.password, user.password);
             if (isMatch) {
+                var token = jwt.sign({ email: request.body.email }, process.env.JWT_SECRET, { expiresIn: 30 });
                 response.json({
                     message: "success",
                     email: request.body.email,
+                    token: token
                 });
             } else {
                 response.json({
@@ -222,6 +258,33 @@ app.post("/login", async (request, response) => {
 /*sample route*/
 app.get("/", (request, response) => { response.send("sample route") })
 
+//
+function authenticateNavigation(request, response, next) {
+    if (request.headers.authorization) {
+        jwt.verify(
+            request.headers.authorization,
+            process.env.JWT_SECRET,
+            (err, decode) => {
+                if (decode) {
+                    if (request.body.email == decode.email) next();
+                    else {
+                        response.json({
+                            message: "Not Authorized",
+                        });
+                    }
+                } else {
+                    response.json({
+                        message: "Invalid Token",
+                    });
+                }
+            }
+        );
+    } else {
+        response.json({
+            message: "Token not available",
+        });
+    }
+}
 
 var port = process.env.PORT || 3000;
 app.listen(port);
