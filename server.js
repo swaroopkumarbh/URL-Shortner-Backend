@@ -170,7 +170,6 @@ app.post("/users/register", async (request, response) => {
 app.put("/users/auth/:email", authenticate, async (request, response) => {
     let client;
     try {
-        console.log('inside auth api')
         client = await mongoclient.connect(url);
         var db = client.db("URL_SHORTNER");
         var cursor = await db
