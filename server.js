@@ -12,8 +12,16 @@ const url = process.env.DB_URL;
 const shortid = require("shortid");
 
 app.use(cors());
+
 app.use(bodyparser.json());
 
+var transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: "bhswaroopkumar@gmail.com",
+        pass: process.env.MAILPASSWORD,
+    },
+});
 const eventTrigger = require("events");
 var eventEmitter = new eventTrigger();
 
@@ -129,28 +137,22 @@ app.post("/users/register", async (request, response) => {
             var token = jwt.sign({ email: request.body.email }, process.env.JWT_SECRET);
 
             var emailReg = request.body.email;
-            eventEmitter.on("email-trigger", (req, res) => {
-                var transporter = nodemailer.createTransport({
-                    service: "gmail",
-                    auth: {
-                        user: "bhswaroopkumar@gmail.com",
-                        pass: process.env.MAILPASSWORD,
-                    },
-                });
-                var mailoptions = {
-                    from: `bhswaroopkumar@gmail.com`,
-                    to: `bhswaroopkumar@gmail.com`,
-                    subject: `User Activation Mail from URL Shortner`,
-                    html: `<div>Please click the below link to activate your account <br>                     <a href="https://swaroop-url-shortner.netlify.app/auth.html">Click Me</a></div>`,
-                };
-                transporter.sendMail(mailoptions, (err, info) => {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        console.log("email sent" + info.response);
-                    }
-                });
+
+
+            var mailoptions = {
+                from: `bhswaroopkumar@gmail.com`,
+                to: `${emailReg}`,
+                subject: `User Activation Mail from URL Shortner`,
+                html: `<div>Please click the below link to activate your account <br>                     <a href="https://swaroop-url-shortner.netlify.app/auth.html">Click Me</a></div>`,
+            };
+            transporter.sendMail(mailoptions, (err, info) => {
+                if (err) {
+                    console.log(err);
+                } else {
+                    console.log("email sent" + info.response);
+                }
             });
+
 
             eventEmitter.emit("email-trigger");
 
