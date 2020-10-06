@@ -154,8 +154,6 @@ app.post("/users/register", async (request, response) => {
             });
 
 
-            eventEmitter.emit("email-trigger");
-
             client.close();
             response.json({
                 message: "User registered",
