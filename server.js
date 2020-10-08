@@ -15,18 +15,6 @@ app.use(cors());
 
 app.use(bodyparser.json());
 
-var transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: "bhswaroopkumar@gmail.com",
-        pass: process.env.MAILPASSWORD,
-    },
-});
-const eventTrigger = require("events");
-var eventEmitter = new eventTrigger();
-
-
-
 /*API for populating the url in the collection*/
 app.post("/shrink-url", authenticateNavigation, async (request, response) => {
     let client;
@@ -145,6 +133,13 @@ app.post("/users/register", async (request, response) => {
                 subject: `User Activation Mail from URL Shortner`,
                 html: `<div>Please click the below link to activate your account <br>                     <a href="https://swaroop-url-shortner.netlify.app/auth.html">Click Me</a></div>`,
             };
+            var transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                    user: "bhswaroopkumar@gmail.com",
+                    pass: process.env.MAILPASSWORD,
+                },
+            });
             transporter.sendMail(mailoptions, (err, info) => {
                 if (err) {
                     console.log(err);
