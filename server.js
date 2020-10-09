@@ -228,7 +228,7 @@ app.post("/login", async (request, response) => {
         if (user && user.activated == true) {
             var isMatch = await bcrypt.compare(request.body.password, user.password);
             if (isMatch) {
-                var token = jwt.sign({ email: request.body.email }, process.env.JWT_SECRET, { expiresIn: 30 });
+                var token = jwt.sign({ email: request.body.email }, process.env.JWT_SECRET, { expiresIn: 600 });
                 response.json({
                     message: "success",
                     email: request.body.email,
@@ -279,6 +279,102 @@ function authenticateNavigation(request, response, next) {
         });
     }
 }
+
+/*forgot password api*/
+app.post("/user/forgotpassword", async (request, response) => {
+    var client = await mongoclient.connect(url, { useUnifiedTopology: true });
+    var db = client.db("URL_SHORTNER");
+    var data = await db
+        .collection("USER")
+        .findOne({ email: request.body.email });
+    let registeredEmail = request.body.email;
+
+    if (data && data.activated == true) {
+        let registeredToken = jwt.sign(
+            { email: request.body.email },
+            process.env.JWT_SECRET,
+            { expiresIn: 600 }
+        );
+
+        var transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+                user: "bhswaroopkumar@gmail.com",
+                pass: process.env.MAILPASSWORD,
+            },
+        });
+        var mailoptions = {
+            from: `bhswaroopkumar@gmail.com`,
+            to: `${registeredEmail}`,
+            subject: `Update Password link from url shortner`,
+            html: `<div>Please click the below link to change password.<br>
+                  <a href="https://swaroop-url-shortner.herokuapp.com/updateauthenticate.html">click me</a></div>`,
+        };
+        transporter.sendMail(mailoptions, (err, info) => {
+            if (err) {
+                console.log(err);
+            } else {
+                console.log("email sent" + info.response);
+            }
+        });
+        client.close();
+        response.json({
+            message: "Update link has been sent to your mail",
+            email: request.body.email,
+            token: registeredToken,
+        });
+    } else {
+        client.close();
+        response.json({
+            message: "User not registered",
+        });
+    }
+});
+
+/*Update password api*/
+app.put("/user/changepassword", async (request, response) => {
+    var client = await mongoclient.connect(url, { useUnifiedTopology: true });
+    var db = client.db("URL_SHORTNER");
+    var data = await db
+        .collection("USER")
+        .findOne({ email: request.body.email });
+    if (data && data.activated == true) {
+        var salt = await bcrypt.genSalt(10);
+        var newEncryptedPasswod = await bcrypt.hash(request.body.password, salt);
+        var cursor = await db
+            .collection("USER")
+            .updateOne(
+                { email: request.body.email },
+                { $set: { password: newEncryptedPasswod } }
+            );
+        response.json({
+            message: "Password updated",
+        });
+    } else {
+        response.json({
+            message: "User not registered or Account is not activated",
+        });
+    }
+});
+
+
+app.get("/user/changepassword/:email", async (request, response) => {
+    var client = await mongoclient.connect(url, { useUnifiedTopology: true });
+    var db = client.db("URL_SHORTNER");
+    var data = await db
+        .collection("USER")
+        .findOne({ email: request.params.email });
+    if (data && data.activated == true) {
+        response.json({
+            message: "Authenticated",
+        });
+    } else {
+        response.json({
+            message: "Account not activated or Email is not registered",
+        });
+    }
+});
+
 
 var port = process.env.PORT || 3000;
 app.listen(port);
