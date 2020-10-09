@@ -252,7 +252,7 @@ app.post("/login", async (request, response) => {
 /*sample route*/
 app.get("/", (request, response) => { response.send("sample route") })
 
-//
+
 function authenticateNavigation(request, response, next) {
     if (request.headers.authorization) {
         jwt.verify(
@@ -319,7 +319,7 @@ app.post("/user/forgotpassword", async (request, response) => {
         });
         client.close();
         response.json({
-            message: "Update link has been sent to your mail",
+            message: "User Present",
             email: request.body.email,
             token: registeredToken,
         });
