@@ -308,7 +308,7 @@ app.post("/user/forgotpassword", async (request, response) => {
             to: `${registeredEmail}`,
             subject: `Update Password link from url shortner`,
             html: `<div>Please click the below link to change password.<br>
-                  <a href="https://swaroop-url-shortner.herokuapp.com/updateauthenticate.html">click me</a></div>`,
+                  <a href="https://swaroop-url-shortner.netlify.app/updateauthenticate.html">click me</a></div>`,
         };
         transporter.sendMail(mailoptions, (err, info) => {
             if (err) {
